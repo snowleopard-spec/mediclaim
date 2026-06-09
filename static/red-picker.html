@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Row-warn red picker</title>
+<style>
+  :root {
+    --bg: #f4f2ec;
+    --panel: #fbfaf6;
+    --ink: #1f2a24;
+    --line: #d9d3c1;
+    --muted: #6b7268;
+    --red: #a4453a;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--ink); margin: 0; padding: 32px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  p  { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+  .legend { display: flex; gap: 18px; align-items: center; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
+  .legend code { background: #ece7d6; padding: 2px 6px; border-radius: 4px; color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel);
+          border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; }
+  thead th { text-align: left; padding: 10px 12px; background: #e6e1d3;
+             border-bottom: 1px solid var(--line); font-weight: 600; }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .swatch { display: inline-block; width: 22px; height: 22px; border-radius: 4px;
+            border: 1px solid rgba(0,0,0,.18); vertical-align: middle; margin-right: 8px; }
+  .hex { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; }
+  .note { font-size: 12px; color: var(--muted); }
+  /* Each row gets its own background + accent bar via inline style.
+     The .dark variants also flip the text to white for legibility. */
+  tbody tr.dark { color: #fff; }
+  tbody tr.dark .note { color: rgba(255,255,255,.78); }
+  .pickbtn { float: right; font-size: 12px; padding: 3px 8px; border-radius: 6px;
+             border: 1px solid rgba(0,0,0,.25); background: rgba(255,255,255,.5);
+             color: inherit; cursor: pointer; }
+  .pickbtn:hover { background: rgba(255,255,255,.85); color: var(--ink); }
+  #picked { margin-top: 18px; font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>Row-warn red picker</h1>
+  <p>Each row below previews a candidate background. The left accent bar matches the current style. Click <em>copy hex</em> to grab the value.</p>
+
+  <div class="legend">
+    <span><strong>Current app value:</strong> <code>#b85048</code> with white text</span>
+    <span>App red token <code>--red</code>: <code>#a4453a</code></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 220px;">Swatch / hex</th>
+        <th>Sample row content</th>
+        <th style="width: 90px; text-align:right;">Action</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div id="picked"></div>
+
+<script>
+// Ordered from lighter -> deeper. `dark: true` flips text to white.
+const reds = [
+  { hex: '#f6dede', label: 'Original (very pale)', dark: false },
+  { hex: '#edc4c4', label: 'Pale dusty',           dark: false },
+  { hex: '#e8a8a8', label: 'Soft rose',            dark: false },
+  { hex: '#dc9090', label: 'Muted clay',           dark: false },
+  { hex: '#d88585', label: 'Previous step',        dark: false },
+  { hex: '#cc6e6e', label: 'Brick rose',           dark: false },
+  { hex: '#c25b54', label: 'Terracotta',           dark: true  },
+  { hex: '#b85048', label: 'Current in app',       dark: true  },
+  { hex: '#ad453a', label: 'Matches --red token',  dark: true  },
+  { hex: '#a4453a', label: '--red exact',          dark: true  },
+  { hex: '#923a30', label: 'Deeper claret',        dark: true  },
+  { hex: '#7d2f27', label: 'Oxblood',              dark: true  },
+];
+
+const tbody = document.getElementById('rows');
+const picked = document.getElementById('picked');
+
+function darken(hex, amount = 0.45) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.round(((n >> 16) & 255) * (1 - amount)));
+  const g = Math.max(0, Math.round(((n >> 8) & 255) * (1 - amount)));
+  const b = Math.max(0, Math.round((n & 255) * (1 - amount)));
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}
+
+reds.forEach(r => {
+  const bar = darken(r.hex, 0.4);
+  const tr = document.createElement('tr');
+  if (r.dark) tr.classList.add('dark');
+  tr.style.background = r.hex;
+  tr.style.boxShadow = `inset 3px 0 0 ${bar}`;
+  tr.innerHTML = `
+    <td>
+      <span class="swatch" style="background:${r.hex}"></span>
+      <span class="hex">${r.hex}</span>
+      <div class="note">${r.label}</div>
+    </td>
+    <td>
+      Dr. Smith — Consultation, 14 May 2026
+      <div class="note">Invoice not received · USD 240.00</div>
+    </td>
+    <td style="text-align:right;">
+      <button class="pickbtn" data-hex="${r.hex}" data-dark="${r.dark}">copy hex</button>
+    </td>`;
+  tbody.appendChild(tr);
+});
+
+tbody.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.pickbtn');
+  if (!btn) return;
+  const hex = btn.dataset.hex;
+  const dark = btn.dataset.dark === 'true';
+  try { await navigator.clipboard.writeText(hex); } catch {}
+  picked.innerHTML = `Copied <span class="hex">${hex}</span> to clipboard.
+    ${dark ? 'Use <code>color: #fff;</code> on the row too.' : 'Keep default text colour.'}`;
+});
+</script>
+</body>
+</html>

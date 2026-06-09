@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedClaims</title>
+<style>
+  :root {
+    --bg: #f4f2ec;
+    --panel: #fbfaf6;
+    --ink: #1f2a24;
+    --muted: #6b7670;
+    --line: #ddd9cf;
+    --accent: #2f6f5b;
+    --accent-soft: #e3efe9;
+    --amber: #b07a1e;
+    --amber-soft: #f6ecd6;
+    --blue: #2c5d8a;
+    --blue-soft: #e0eaf3;
+    --red: #a4453a;
+    --grey-soft: #ece9e1;
+    --shadow: 0 1px 2px rgba(31,42,36,.06), 0 6px 20px rgba(31,42,36,.05);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Iowan Old Style", Georgia, "Times New Roman", serif;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1480px; margin: 0 auto; padding: 28px 24px 80px; }
+  .table-scroll { overflow-x: auto; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  h1 {
+    font-size: 26px; letter-spacing: -.4px; margin: 0; font-weight: 600;
+  }
+  h1 .dot { color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+
+  /* summary strip */
+  .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 11px 16px; box-shadow: var(--shadow);
+    flex: 1 1 0; min-width: 0;
+  }
+  .stat .n { font-size: 21px; font-weight: 600; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+
+  /* controls */
+  .controls {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 16px;
+  }
+  .controls input[type=search], .controls select, .controls input[type=date] {
+    font-family: inherit; font-size: 14px; padding: 8px 11px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink);
+  }
+  .controls input[type=search] { min-width: 220px; }
+  .controls .daterange { display: inline-flex; align-items: center; gap: 6px;
+                         color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .spacer { flex: 1; }
+  button {
+    font-family: inherit; font-size: 14px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px;
+    background: var(--panel); color: var(--ink); transition: .12s;
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  button.primary:hover { background: #275f4e; }
+
+  /* table */
+  table { width: auto; max-width: 100%; margin: 0 auto; border-collapse: collapse;
+          background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+          overflow: hidden; box-shadow: var(--shadow); }
+  thead th {
+    text-align: center; font-size: 13px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--ink); font-weight: 700; padding: 13px 12px;
+    background: #e6e1d3; border-bottom: 1px solid var(--line);
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  thead th:hover { background: #ddd7c5; }
+  tbody td { padding: 0 12px; height: 44px; border-bottom: 1px solid var(--line); font-size: 14px;
+             vertical-align: middle; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+             max-width: 280px; }
+  tbody tr:last-child td { border-bottom: none; }
+  /* Row state tints — track the workflow stage. */
+  tbody tr.row-await    { background: #e8a8a8; }
+  tbody tr.row-ready    { background: #fbf1cf; }
+  tbody tr.row-claim    { background: #dfeede; }
+  tbody tr.row-done     { background: #b8d9bf; }
+  tbody tr.row-warn     { background: #c25b54; color: #fff; box-shadow: inset 3px 0 0 #743732; }
+  tbody tr.row-excluded { background: #e2e0d9; color: #666; }
+  /* Subtle hover that doesn't overwrite the state color. */
+  tbody tr:hover { box-shadow: inset 0 0 0 9999px rgba(31,42,36,.04); }
+  tbody tr.row-warn:hover { box-shadow: inset 3px 0 0 var(--red), inset 0 0 0 9999px rgba(31,42,36,.04); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.center { text-align: center; }
+
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .st-await    { background: var(--grey-soft); color: var(--muted); }
+  .st-ready    { background: var(--amber-soft); color: var(--amber); }
+  .st-claim    { background: var(--blue-soft); color: var(--blue); }
+  .st-done     { background: var(--accent-soft); color: var(--accent); }
+  .st-warn     { background: #f6dede; color: var(--red); }
+  .st-excluded { background: #d6d6d2; color: #555; }
+
+  .flag { cursor: pointer; font-size: 17px; line-height: 1; user-select: none; opacity: .85; }
+  .flag.off { opacity: .22; }
+  .flag:hover { transform: scale(1.18); }
+
+  .linkbtn { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; font-size: 13px; }
+  .linkbtn:hover { border-bottom-color: var(--accent); }
+  .nofile { color: var(--muted); font-size: 12px; font-style: italic; }
+
+  .file-add { font-size: 12px; color: var(--accent); cursor: pointer; padding: 2px 6px;
+              border: 1px dashed var(--accent); border-radius: 12px; background: transparent;
+              font-family: inherit; }
+  .file-add:hover { background: var(--accent-soft); }
+
+  .rowact { color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 6px; border-radius: 5px; }
+  .rowact:hover { background: var(--grey-soft); color: var(--ink); }
+  .rowact.danger:hover { background: #f6dede; color: var(--red); }
+  .archived-banner { background: var(--amber-soft); color: var(--amber); border: 1px solid var(--line);
+                     border-radius: 8px; padding: 8px 14px; margin-bottom: 14px; font-size: 13px; }
+
+  .empty { text-align: center; color: var(--muted); padding: 50px 0; font-style: italic; }
+
+  /* modal */
+  .overlay { position: fixed; inset: 0; background: rgba(31,42,36,.34); display: none;
+             align-items: flex-start; justify-content: center; padding: 50px 16px; z-index: 50; overflow-y: auto; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--panel); border-radius: 14px; width: 560px; max-width: 100%;
+           box-shadow: 0 20px 60px rgba(0,0,0,.25); border: 1px solid var(--line); }
+  .modal h2 { margin: 0; padding: 20px 24px 14px; font-size: 19px; border-bottom: 1px solid var(--line); }
+  .form { padding: 18px 24px 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px;
+                 text-transform: uppercase; letter-spacing: .5px; }
+  .field input, .field select, .field textarea {
+    width: 100%; font-family: inherit; font-size: 14px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  .field textarea { resize: vertical; min-height: 54px; }
+  .checks { display: flex; gap: 18px; flex-wrap: wrap; padding: 4px 0 10px; }
+  .check { display: flex; align-items: center; gap: 7px; font-size: 14px; cursor: pointer; }
+  .check input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+  .filehint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .modal-foot { display: flex; justify-content: space-between; align-items: center;
+                padding: 14px 24px 20px; gap: 10px; }
+  .err { color: var(--red); font-size: 13px; min-height: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Med<span class="dot">·</span>Claims</h1>
+      <p class="subtitle">Family medical invoices & rebate tracking</p>
+    </div>
+    <button class="primary" onclick="openForm()">+ New entry</button>
+  </header>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="controls">
+    <span class="daterange">
+      From <input type="date" id="fDateFrom" onchange="render()">
+      To <input type="date" id="fDateTo" onchange="render()">
+    </span>
+    <input type="search" id="search" placeholder="Search institution, notes…" oninput="render()">
+    <select id="fClaimant" onchange="render()"><option value="">All claimants</option></select>
+    <select id="fStatus" onchange="render()">
+      <option value="">All statuses</option>
+      <option>Awaiting invoice</option>
+      <option>Ready to claim</option>
+      <option>Claim submitted</option>
+      <option>Complete</option>
+      <option>Excluded</option>
+      <option value="Check: rebated but not claimed">Anomalies</option>
+    </select>
+    <select id="fOpen" onchange="render()">
+      <option value="">Open & complete</option>
+      <option value="open">Outstanding only</option>
+    </select>
+    <button id="archToggle" onclick="toggleArchivedView()">Show archived</button>
+    <button onclick="exportAwaitingPng()">Export PNG</button>
+    <div class="spacer"></div>
+    <span id="count" style="color:var(--muted);font-size:13px;"></span>
+  </div>
+
+  <div class="archived-banner" id="archBanner" style="display:none">
+    Viewing archived entries. Restore brings one back; Delete removes it permanently.
+  </div>
+
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortBy('date_incurred')">Date</th>
+        <th onclick="sortBy('claimant')">Claimant</th>
+        <th onclick="sortBy('institution')">Institution</th>
+        <th onclick="sortBy('amount')">Amount</th>
+        <th class="center" title="Invoice received">Inv</th>
+        <th class="center" title="Claim submitted">Clm</th>
+        <th class="center" title="Rebate received">Reb</th>
+        <th class="center" title="Excluded (insurance won't cover)">Exc</th>
+        <th onclick="sortBy('amount_rebated')">Rebated</th>
+        <th onclick="sortBy('shortfall')">Shortfall</th>
+        <th onclick="sortBy('status')">Status</th>
+        <th>Invoice</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  </div>
+  <div class="empty" id="empty" style="display:none">No matching entries.</div>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">New entry</h2>
+    <div class="form">
+      <input type="hidden" id="f_id">
+      <div class="grid2">
+        <div class="field">
+          <label>Claimant</label>
+          <select id="f_claimant"></select>
+        </div>
+        <div class="field">
+          <label>Date incurred</label>
+          <input type="date" id="f_date">
+        </div>
+      </div>
+      <div class="field">
+        <label>Medical institution</label>
+        <select id="f_institution"></select>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" id="f_amount" step="0.01" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Currency</label>
+          <input type="text" id="f_currency" value="SGD">
+        </div>
+      </div>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="f_received"> Invoice received</label>
+        <label class="check"><input type="checkbox" id="f_claimed"> Claimed</label>
+        <label class="check"><input type="checkbox" id="f_rebated"> Rebated</label>
+        <label class="check"><input type="checkbox" id="f_excluded"> Excluded</label>
+      </div>
+      <div class="field" id="rebatedWrap" style="display:none">
+        <label>Amount rebated</label>
+        <input type="number" id="f_amount_rebated" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label>Invoice file</label>
+        <input type="file" id="f_invoice" accept=".pdf,.png,.jpg,.jpeg,.heic,.webp">
+        <div class="filehint" id="fileHint"></div>
+      </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="f_notes" placeholder="Optional"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="err" id="formErr"></span>
+      <div>
+        <button onclick="closeForm()">Cancel</button>
+        <button class="primary" id="saveBtn" onclick="save()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let CLAIMS = [];
+let CLAIMANTS = [];
+let INSTITUTIONS = [];
+let sortKey = 'date_incurred', sortDir = -1;
+let archivedView = false;   // false = active entries, true = archived entries
+
+const ADD_NEW = '__add_new__';
+
+const $ = id => document.getElementById(id);
+const money = n => Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+async function boot() {
+  // Date range defaults: 1 Jan 2026 → today.
+  $('fDateFrom').value = '2026-01-01';
+  $('fDateTo').value = new Date().toISOString().slice(0,10);
+
+  const cfg = await (await fetch('/api/config')).json();
+  CLAIMANTS = cfg.claimants;
+  const fc = $('fClaimant'), ff = $('f_claimant');
+  CLAIMANTS.forEach(c => {
+    fc.insertAdjacentHTML('beforeend', `<option>${c}</option>`);
+    ff.insertAdjacentHTML('beforeend', `<option>${c}</option>`);
+  });
+  await loadInstitutions();
+  await reload();
+}
+
+async function loadInstitutions() {
+  INSTITUTIONS = await (await fetch('/api/institutions')).json();
+  renderInstitutionSelect();
+}
+
+function renderInstitutionSelect(selected) {
+  const sel = $('f_institution');
+  const opts = [`<option value="" disabled ${selected ? '' : 'selected'}>— pick one —</option>`];
+  INSTITUTIONS.forEach(i => {
+    const v = i.replace(/"/g, '&quot;');
+    opts.push(`<option value="${v}" ${i === selected ? 'selected' : ''}>${esc(i)}</option>`);
+  });
+  opts.push('<option disabled>──────────</option>');
+  opts.push(`<option value="${ADD_NEW}">+ Add new institution…</option>`);
+  sel.innerHTML = opts.join('');
+}
+
+async function handleInstitutionChange() {
+  const sel = $('f_institution');
+  if (sel.value !== ADD_NEW) return;
+  const name = (prompt('New institution name:') || '').trim();
+  if (!name) { renderInstitutionSelect(); return; }
+  try {
+    const res = await fetch('/api/institutions', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name})
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({detail:'Could not add.'}));
+      $('formErr').textContent = e.detail || 'Could not add institution.';
+      renderInstitutionSelect();
+      return;
+    }
+    INSTITUTIONS = await res.json();
+    // Match the canonical casing the server stored.
+    const stored = INSTITUTIONS.find(x => x.toLowerCase() === name.toLowerCase()) || name;
+    renderInstitutionSelect(stored);
+    $('formErr').textContent = '';
+  } catch (err) {
+    $('formErr').textContent = 'Network error adding institution.';
+    renderInstitutionSelect();
+  }
+}
+
+async function reload() {
+  const url = archivedView ? '/api/claims/archived' : '/api/claims';
+  CLAIMS = await (await fetch(url)).json();
+  CLAIMS.forEach(r => { r.shortfall = (r.amount || 0) - (r.amount_rebated || 0); });
+  // Always snap back to newest-first when data changes. Click-to-sort still
+  // works ad-hoc; the next add/edit/toggle resets to chronological.
+  sortKey = 'date_incurred'; sortDir = -1;
+  render();
+}
+
+function statusClass(s) {
+  if (s === 'Excluded') return 'st-excluded';
+  if (s.startsWith('Check')) return 'st-warn';
+  if (s === 'Complete') return 'st-done';
+  if (s === 'Claim submitted') return 'st-claim';
+  if (s === 'Ready to claim') return 'st-ready';
+  return 'st-await';
+}
+
+function rowClass(s) {
+  if (s === 'Excluded') return 'row-excluded';
+  if (s.startsWith('Check')) return 'row-warn';
+  if (s === 'Complete') return 'row-done';
+  if (s === 'Claim submitted') return 'row-claim';
+  if (s === 'Ready to claim') return 'row-ready';
+  return 'row-await';
+}
+
+function sortBy(k){ if(sortKey===k){sortDir*=-1;}else{sortKey=k;sortDir=1;} render(); }
+
+function render() {
+  const q = $('search').value.toLowerCase().trim();
+  const fcl = $('fClaimant').value, fst = $('fStatus').value, fop = $('fOpen').value;
+  const dFrom = $('fDateFrom').value, dTo = $('fDateTo').value;
+  // Date window applies to both the table AND the summary; computed once.
+  const inWindow = CLAIMS.filter(r => {
+    if (dFrom && r.date_incurred < dFrom) return false;
+    if (dTo && r.date_incurred > dTo) return false;
+    return true;
+  });
+  let rows = inWindow.filter(r => {
+    if (fcl && r.claimant !== fcl) return false;
+    if (fst && r.status !== fst) return false;
+    if (fop === 'open' && r.status === 'Complete') return false;
+    if (q && !(r.institution.toLowerCase().includes(q) || (r.notes||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  rows.sort((a,b) => {
+    let x=a[sortKey], y=b[sortKey];
+    if (typeof x==='string'){x=(x||'').toLowerCase();y=(y||'').toLowerCase();}
+    return x<y?-1*sortDir : x>y?1*sortDir : 0;
+  });
+
+  $('rows').innerHTML = rows.map(r => `
+    <tr class="${rowClass(r.status)}">
+      <td style="white-space:nowrap">${r.date_incurred}</td>
+      <td>${r.claimant}</td>
+      <td>${esc(r.institution)}</td>
+      <td class="num">${money(r.amount)}</td>
+      <td class="center"><span class="flag ${r.invoice_received?'':'off'}" onclick="toggle(${r.id},'invoice_received')" title="Invoice received">●</span></td>
+      <td class="center"><span class="flag ${r.claimed?'':'off'}" onclick="toggle(${r.id},'claimed')" title="Claimed">●</span></td>
+      <td class="center"><span class="flag ${r.rebated?'':'off'}" onclick="toggle(${r.id},'rebated')" title="Rebated">●</span></td>
+      <td class="center"><span class="flag ${r.excluded?'':'off'}" onclick="toggle(${r.id},'excluded')" title="Excluded (insurance won't cover)">●</span></td>
+      <td class="num">${r.rebated ? money(r.amount_rebated) : '—'}</td>
+      <td class="num">${money(r.shortfall)}</td>
+      <td><span class="pill ${statusClass(r.status)}">${r.status}</span></td>
+      <td>${r.invoice_file
+            ? `<a class="linkbtn" href="/api/claims/${r.id}/invoice" target="_blank">View ↗</a>`
+            : (archivedView
+                ? `<span class="nofile">none</span>`
+                : `<button class="file-add" onclick="uploadInvoice(${r.id})" title="Add invoice">+ Add</button>`)}</td>
+      <td style="white-space:nowrap">
+        ${archivedView
+          ? `<span class="rowact" onclick="restore(${r.id})">Restore</span>
+             <span class="rowact danger" onclick="hardDelete(${r.id})">Delete</span>`
+          : `<span class="rowact" onclick='editRow(${r.id})'>Edit</span>
+             <span class="rowact" onclick="archive(${r.id})">Archive</span>
+             <span class="rowact danger" onclick="hardDelete(${r.id})">Delete</span>`}
+      </td>
+    </tr>`).join('');
+
+  $('empty').style.display = rows.length ? 'none' : 'block';
+  $('count').textContent = `${rows.length} of ${CLAIMS.length}`;
+  renderSummary(inWindow);
+}
+
+function renderSummary(scope) {
+  const incurred = scope.reduce((s,r) => s + (r.amount || 0), 0);
+  const rebate   = scope.reduce((s,r) => s + (r.amount_rebated || 0), 0);
+  const shortfall = incurred - rebate;
+  const fmt = n => 'SGD ' + n.toLocaleString(undefined, {maximumFractionDigits: 0});
+  $('summary').innerHTML = `
+    <div class="stat"><div class="n">${fmt(incurred)}</div><div class="l">Total amount incurred</div></div>
+    <div class="stat"><div class="n">${fmt(rebate)}</div><div class="l">Total rebate</div></div>
+    <div class="stat"><div class="n">${fmt(shortfall)}</div><div class="l">Shortfall</div></div>`;
+}
+
+function exportAwaitingPng() {
+  const dFrom = $('fDateFrom').value, dTo = $('fDateTo').value;
+  const rows = CLAIMS
+    .filter(r => r.status === 'Awaiting invoice'
+              && (!dFrom || r.date_incurred >= dFrom)
+              && (!dTo   || r.date_incurred <= dTo))
+    .sort((a, b) => a.date_incurred < b.date_incurred ? -1 : 1);
+
+  if (!rows.length) { alert('No "Awaiting invoice" entries in the selected date range.'); return; }
+
+  const cols = [
+    { h: 'Date',        get: r => r.date_incurred,                   align: 'left'  },
+    { h: 'Claimant',    get: r => r.claimant || '',                  align: 'left'  },
+    { h: 'Institution', get: r => r.institution || '',               align: 'left'  },
+    { h: 'Amount',      get: r => money(r.amount) + ' ' + (r.currency || ''), align: 'right' },
+  ];
+
+  const dpr = window.devicePixelRatio || 1;
+  const padX = 14, rowH = 32, headerH = 38;
+  const bodyFont = '14px "Iowan Old Style", Georgia, "Times New Roman", serif';
+  const headFont = '700 12px "Iowan Old Style", Georgia, "Times New Roman", serif';
+
+  const meas = document.createElement('canvas').getContext('2d');
+  const colW = cols.map(c => {
+    meas.font = headFont;
+    let w = meas.measureText(c.h.toUpperCase()).width;
+    meas.font = bodyFont;
+    for (const r of rows) w = Math.max(w, meas.measureText(String(c.get(r))).width);
+    return Math.ceil(w + padX * 2);
+  });
+
+  const margin = 12;
+  const tableW = colW.reduce((a, b) => a + b, 0);
+  const tableH = headerH + rows.length * rowH;
+  const W = tableW + margin * 2;
+  const H = tableH + margin * 2;
+
+  const cvs = document.createElement('canvas');
+  cvs.width = W * dpr; cvs.height = H * dpr;
+  const ctx = cvs.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+  ctx.translate(margin, margin);
+
+  ctx.fillStyle = '#fbfaf6'; ctx.fillRect(0, 0, tableW, tableH);
+
+  ctx.fillStyle = '#e6e1d3'; ctx.fillRect(0, 0, tableW, headerH);
+  ctx.fillStyle = '#1f2a24'; ctx.font = headFont;
+  let x = 0;
+  cols.forEach((c, i) => {
+    ctx.textAlign = c.align;
+    const tx = c.align === 'right' ? x + colW[i] - padX : x + padX;
+    ctx.fillText(c.h.toUpperCase(), tx, headerH / 2);
+    x += colW[i];
+  });
+
+  ctx.font = bodyFont;
+  rows.forEach((r, ri) => {
+    const y = headerH + ri * rowH;
+    ctx.fillStyle = '#e8a8a8'; ctx.fillRect(0, y, tableW, rowH);
+    ctx.fillStyle = '#1f2a24';
+    let cx = 0;
+    cols.forEach((c, i) => {
+      ctx.textAlign = c.align;
+      const tx = c.align === 'right' ? cx + colW[i] - padX : cx + padX;
+      ctx.fillText(String(c.get(r)), tx, y + rowH / 2);
+      cx += colW[i];
+    });
+    ctx.strokeStyle = '#ddd9cf'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y + rowH + 0.5); ctx.lineTo(tableW, y + rowH + 0.5); ctx.stroke();
+  });
+
+  ctx.strokeStyle = '#ddd9cf'; ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, tableW - 1, tableH - 1);
+
+  const today = new Date().toISOString().slice(0, 10);
+  cvs.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `medclaims-awaiting-${today}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+}
+
+async function uploadInvoice(claimId) {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.pdf,.png,.jpg,.jpeg,.heic,.webp';
+  inp.onchange = async () => {
+    const file = inp.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`/api/claims/${claimId}/invoice`, {method:'POST', body: fd});
+    if (!res.ok) { alert('Upload failed.'); return; }
+    await reload();
+  };
+  inp.click();
+}
+
+function esc(s){ return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+async function toggle(id, field) {
+  const fd = new FormData(); fd.append('field', field);
+  await fetch(`/api/claims/${id}/toggle`, {method:'POST', body:fd});
+  await reload();
+}
+
+async function archive(id) {
+  if (!confirm('Archive this entry? The invoice file stays on disk.')) return;
+  await fetch(`/api/claims/${id}`, {method:'DELETE'});
+  await reload();
+}
+
+async function toggleArchivedView() {
+  archivedView = !archivedView;
+  $('archToggle').textContent = archivedView ? 'Show active' : 'Show archived';
+  $('archToggle').classList.toggle('primary', archivedView);
+  $('archBanner').style.display = archivedView ? 'block' : 'none';
+  await reload();
+}
+
+async function restore(id) {
+  await fetch(`/api/claims/${id}/restore`, {method:'POST'});
+  await reload();
+}
+
+async function hardDelete(id) {
+  const r = CLAIMS.find(x => x.id === id);
+  const desc = r ? `${r.claimant} · ${r.institution} · ${r.date_incurred}` : `entry ${id}`;
+  const hasFile = r && r.invoice_file;
+  const msg = `Permanently delete this entry?\n\n  ${desc}\n\n`
+            + (hasFile ? `The invoice file (${r.invoice_file}) will also be deleted from disk.\n\n` : '')
+            + `This cannot be undone.`;
+  if (!confirm(msg)) return;
+  const res = await fetch(`/api/claims/${id}/permanent`, {method:'DELETE'});
+  if (!res.ok) { alert('Could not delete.'); return; }
+  await reload();
+}
+
+// ---- form ----
+$('f_rebated').addEventListener('change', e => {
+  $('rebatedWrap').style.display = e.target.checked ? 'block' : 'none';
+});
+$('f_institution').addEventListener('change', handleInstitutionChange);
+
+function openForm() {
+  $('modalTitle').textContent = 'New entry';
+  $('f_id').value = '';
+  $('f_claimant').value = CLAIMANTS[0];
+  $('f_date').value = new Date().toISOString().slice(0,10);
+  renderInstitutionSelect();
+  $('f_amount').value=''; $('f_currency').value='SGD';
+  $('f_received').checked=false; $('f_claimed').checked=false; $('f_rebated').checked=false;
+  $('f_excluded').checked=false;
+  $('f_amount_rebated').value=''; $('rebatedWrap').style.display='none';
+  $('f_invoice').value=''; $('f_notes').value=''; $('formErr').textContent='';
+  $('fileHint').textContent='';
+  $('overlay').classList.add('open');
+}
+
+function editRow(id) {
+  const r = CLAIMS.find(x=>x.id===id); if(!r) return;
+  $('modalTitle').textContent = 'Edit entry';
+  $('f_id').value = r.id;
+  $('f_claimant').value = r.claimant;
+  $('f_date').value = r.date_incurred;
+  renderInstitutionSelect(r.institution);
+  $('f_amount').value = r.amount;
+  $('f_currency').value = r.currency;
+  $('f_received').checked = !!r.invoice_received;
+  $('f_claimed').checked = !!r.claimed;
+  $('f_rebated').checked = !!r.rebated;
+  $('f_excluded').checked = !!r.excluded;
+  $('f_amount_rebated').value = r.amount_rebated || '';
+  $('rebatedWrap').style.display = r.rebated ? 'block' : 'none';
+  $('f_invoice').value = '';
+  $('fileHint').textContent = r.invoice_file ? `Current: ${r.invoice_file} — choose a file only to replace it.` : '';
+  $('f_notes').value = r.notes || '';
+  $('formErr').textContent='';
+  $('overlay').classList.add('open');
+}
+
+function closeForm(){ $('overlay').classList.remove('open'); }
+
+async function save() {
+  const id = $('f_id').value;
+  const institution = $('f_institution').value;
+  if (!institution || institution === ADD_NEW) {
+    $('formErr').textContent = 'Please pick an institution.';
+    return;
+  }
+  const fd = new FormData();
+  fd.append('claimant', $('f_claimant').value);
+  fd.append('institution', institution);
+  fd.append('date_incurred', $('f_date').value);
+  fd.append('amount', $('f_amount').value || '0');
+  fd.append('currency', $('f_currency').value.trim() || 'SGD');
+  fd.append('invoice_received', $('f_received').checked ? '1':'0');
+  fd.append('claimed', $('f_claimed').checked ? '1':'0');
+  fd.append('rebated', $('f_rebated').checked ? '1':'0');
+  fd.append('excluded', $('f_excluded').checked ? '1':'0');
+  fd.append('amount_rebated', $('f_amount_rebated').value || '0');
+  fd.append('notes', $('f_notes').value);
+  const file = $('f_invoice').files[0];
+  if (file) fd.append('invoice', file);
+
+  $('saveBtn').disabled = true;
+  try {
+    const url = id ? `/api/claims/${id}` : '/api/claims';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {method, body: fd});
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({detail:'Error'}));
+      $('formErr').textContent = e.detail || 'Could not save.';
+      return;
+    }
+    closeForm();
+    await reload();
+  } finally {
+    $('saveBtn').disabled = false;
+  }
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeForm(); });
+$('overlay').addEventListener('click', e => { if(e.target.id==='overlay') closeForm(); });
+
+boot();
+</script>
+</body>
+</html>

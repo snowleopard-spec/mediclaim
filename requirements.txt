@@ -1,0 +1,9 @@
+# MedClaims dependencies.
+# Install with:  pip3 install -r requirements.txt
+#
+# Versions are pinned with >= to the ones this tool was built and tested against.
+# If you ever want to lock to exact versions instead, change >= to ==.
+
+fastapi>=0.136.1
+uvicorn[standard]>=0.47.0
+python-multipart>=0.0.29

@@ -1,0 +1,20 @@
+# Personal data — never commit these
+medclaims.db
+medclaims.db-journal
+medclaims.db-wal
+medclaims.db-shm
+invoices/
+claimants.json
+institutions.json
+
+# Environment
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# OS / editor cruft
+.DS_Store
+.claude/
+.idea/
+.vscode/
