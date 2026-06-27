@@ -1,8 +1,8 @@
 # Personal data — never commit these
-medclaims.db
-medclaims.db-journal
-medclaims.db-wal
-medclaims.db-shm
+mediclaim.db
+mediclaim.db-journal
+mediclaim.db-wal
+mediclaim.db-shm
 invoices/
 claimants.json
 institutions.json

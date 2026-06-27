@@ -1,11 +1,11 @@
 """
-MedClaims — a local, single-user medical claims tracker & invoice manager.
+MediClaim — a local, single-user medical claims tracker & invoice manager.
 
 Run:  python app.py
 Then open http://localhost:8765 in your browser.
 
 Everything lives in this folder:
-  medclaims.db          SQLite database (your data)
+  mediclaim.db          SQLite database (your data)
   invoices/             the actual invoice files
   app.py                this file
   static/index.html     the UI
@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 BASE = Path(__file__).resolve().parent
-DB_PATH = BASE / "medclaims.db"
+DB_PATH = BASE / "mediclaim.db"
 INVOICE_DIR = BASE / "invoices"
 STATIC_DIR = BASE / "static"
 CLAIMANTS_PATH = BASE / "claimants.json"
@@ -194,7 +194,7 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title="MedClaims", lifespan=lifespan)
+app = FastAPI(title="MediClaim", lifespan=lifespan)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -576,5 +576,5 @@ def delete_claim_file(claim_id: int, file_id: int):
 
 if __name__ == "__main__":
     import uvicorn
-    print("\n  MedClaims running →  http://localhost:8765\n")
+    print("\n  MediClaim running →  http://localhost:8765\n")
     uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")

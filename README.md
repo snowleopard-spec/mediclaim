@@ -1,4 +1,4 @@
-# MedClaims — local medical claims tracker
+# MediClaim — local medical claims tracker
 
 A single-user, fully-local tracker for family medical invoices and rebate claims.
 Your data and invoice files never leave your machine.
@@ -50,18 +50,18 @@ Everything is inside this one folder:
 
 | Item                 | What it is                                              |
 |----------------------|---------------------------------------------------------|
-| `medclaims.db`       | SQLite database — all your entries and file metadata    |
+| `mediclaim.db`       | SQLite database — all your entries and file metadata    |
 | `invoices/`          | Invoice files **and** other attached documents on disk  |
 | `claimants.json`     | The list of people that show up in the Claimant dropdown |
 | `institutions.json`  | The list of medical institutions in the dropdown         |
 | `app.py`             | The server                                              |
 | `static/`            | The web UI                                              |
 
-**To back up:** copy the whole folder (or just `medclaims.db` + `invoices/` +
+**To back up:** copy the whole folder (or just `mediclaim.db` + `invoices/` +
 the two JSON files).
 
-**To inspect data directly:** open `medclaims.db` in any SQLite browser, or
-`sqlite3 medclaims.db "SELECT * FROM claims;"`. Attached documents live in the
+**To inspect data directly:** open `mediclaim.db` in any SQLite browser, or
+`sqlite3 mediclaim.db "SELECT * FROM claims;"`. Attached documents live in the
 `claim_files` table, joined by `claim_id`.
 
 ## Customising the claimant list

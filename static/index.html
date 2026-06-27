@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MedClaims</title>
+<title>MediClaim</title>
 <style>
   :root {
     --bg: #f4f2ec;
@@ -548,7 +548,7 @@ function exportAwaitingPng() {
   cvs.toBlob(blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `medclaims-awaiting-${today}.png`;
+    a.href = url; a.download = `mediclaim-awaiting-${today}.png`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   });

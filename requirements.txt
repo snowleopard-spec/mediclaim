@@ -1,4 +1,4 @@
-# MedClaims dependencies.
+# MediClaim dependencies.
 # Install with:  pip3 install -r requirements.txt
 #
 # Versions are pinned with >= to the ones this tool was built and tested against.
