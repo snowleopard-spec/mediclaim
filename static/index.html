@@ -201,6 +201,7 @@
     <thead>
       <tr>
         <th onclick="sortBy('date_incurred')">Date</th>
+        <th class="center" onclick="sortBy('days_aged')" title="Days since incurred (open entries only)">Aged</th>
         <th onclick="sortBy('claimant')">Claimant</th>
         <th onclick="sortBy('institution')">Institution</th>
         <th onclick="sortBy('amount')">Amount</th>
@@ -292,6 +293,12 @@ const ADD_NEW = '__add_new__';
 
 const $ = id => document.getElementById(id);
 const money = n => Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtDate = s => {
+  if (!s) return '';
+  const [y, m, d] = s.split('-');
+  return `${d}-${MONTHS[Number(m)-1]}-${y.slice(2)}`;
+};
 
 async function boot() {
   // Date range defaults: 1 Jan 2026 → today.
@@ -384,6 +391,13 @@ function rowClass(s) {
 
 function sortBy(k){ if(sortKey===k){sortDir*=-1;}else{sortKey=k;sortDir=1;} render(); }
 
+function daysAged(r) {
+  if (r.status === 'Complete' || r.status === 'Excluded') return null;
+  const incurred = new Date(r.date_incurred + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.max(0, Math.floor((today - incurred) / 86400000));
+}
+
 function render() {
   const q = $('search').value.toLowerCase().trim();
   const fcl = $('fClaimant').value, fst = $('fStatus').value, fop = $('fOpen').value;
@@ -401,15 +415,17 @@ function render() {
     if (q && !(r.institution.toLowerCase().includes(q) || (r.notes||'').toLowerCase().includes(q))) return false;
     return true;
   });
+  const getSort = (r, k) => k === 'days_aged' ? (daysAged(r) ?? -Infinity) : r[k];
   rows.sort((a,b) => {
-    let x=a[sortKey], y=b[sortKey];
+    let x=getSort(a,sortKey), y=getSort(b,sortKey);
     if (typeof x==='string'){x=(x||'').toLowerCase();y=(y||'').toLowerCase();}
     return x<y?-1*sortDir : x>y?1*sortDir : 0;
   });
 
   $('rows').innerHTML = rows.map(r => `
     <tr class="${rowClass(r.status)}">
-      <td style="white-space:nowrap">${r.date_incurred}</td>
+      <td style="white-space:nowrap">${fmtDate(r.date_incurred)}</td>
+      <td class="center">${daysAged(r) ?? ''}</td>
       <td>${r.claimant}</td>
       <td>${esc(r.institution)}</td>
       <td class="num">${money(r.amount)}</td>
@@ -462,7 +478,7 @@ function exportAwaitingPng() {
   if (!rows.length) { alert('No "Awaiting invoice" entries in the selected date range.'); return; }
 
   const cols = [
-    { h: 'Date',        get: r => r.date_incurred,                   align: 'left'  },
+    { h: 'Date',        get: r => fmtDate(r.date_incurred),          align: 'left'  },
     { h: 'Claimant',    get: r => r.claimant || '',                  align: 'left'  },
     { h: 'Institution', get: r => r.institution || '',               align: 'left'  },
     { h: 'Amount',      get: r => money(r.amount) + ' ' + (r.currency || ''), align: 'right' },
@@ -583,7 +599,7 @@ async function restore(id) {
 
 async function hardDelete(id) {
   const r = CLAIMS.find(x => x.id === id);
-  const desc = r ? `${r.claimant} · ${r.institution} · ${r.date_incurred}` : `entry ${id}`;
+  const desc = r ? `${r.claimant} · ${r.institution} · ${fmtDate(r.date_incurred)}` : `entry ${id}`;
   const hasFile = r && r.invoice_file;
   const msg = `Permanently delete this entry?\n\n  ${desc}\n\n`
             + (hasFile ? `The invoice file (${r.invoice_file}) will also be deleted from disk.\n\n` : '')

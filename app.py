@@ -278,9 +278,31 @@ def _safe_name(name: str) -> str:
     return name[:120] or "invoice"
 
 
-def _store_invoice(claim_id: int, upload: UploadFile) -> str:
-    """Copy the upload into invoices/ as {id}_{safename}. Returns stored name."""
-    stored = f"{claim_id}_{_safe_name(upload.filename)}"
+def _safe_token(s: str) -> str:
+    """Strip spaces and keep only filename-safe chars (no dot, to keep one extension)."""
+    s = re.sub(r"\s+", "", s or "")
+    s = re.sub(r"[^A-Za-z0-9_-]", "", s)
+    return s or "x"
+
+
+def _safe_ext(filename: str) -> str:
+    _, ext = os.path.splitext(os.path.basename(filename or ""))
+    ext = re.sub(r"[^A-Za-z0-9]", "", ext)[:10]
+    return f".{ext}" if ext else ""
+
+
+def _store_invoice(date_incurred: str, claimant: str, institution: str,
+                   upload: UploadFile) -> str:
+    """Copy the upload into invoices/ as yyyymmdd_Claimant_Institution.ext.
+    Appends _2, _3, ... if that name already exists."""
+    yyyymmdd = (date_incurred or "").replace("-", "")
+    base = f"{yyyymmdd}_{_safe_token(claimant)}_{_safe_token(institution)}"
+    ext = _safe_ext(upload.filename)
+    stored = f"{base}{ext}"
+    i = 2
+    while (INVOICE_DIR / stored).exists():
+        stored = f"{base}_{i}{ext}"
+        i += 1
     dest = INVOICE_DIR / stored
     with dest.open("wb") as f:
         shutil.copyfileobj(upload.file, f)
@@ -318,7 +340,9 @@ async def create_claim(
         )
         claim_id = cur.lastrowid
         if invoice is not None and invoice.filename:
-            stored = _store_invoice(claim_id, invoice)
+            stored = _store_invoice(
+                fields["date_incurred"], fields["claimant"], fields["institution"], invoice
+            )
             db.execute("UPDATE claims SET invoice_file=? WHERE id=?", (stored, claim_id))
         db.commit()
         row = db.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
@@ -358,7 +382,9 @@ async def update_claim(
              fields["notes"], now_iso(), claim_id),
         )
         if invoice is not None and invoice.filename:
-            stored = _store_invoice(claim_id, invoice)
+            stored = _store_invoice(
+                fields["date_incurred"], fields["claimant"], fields["institution"], invoice
+            )
             db.execute("UPDATE claims SET invoice_file=? WHERE id=?", (stored, claim_id))
         db.commit()
         row = db.execute("SELECT * FROM claims WHERE id=?", (claim_id,)).fetchone()
@@ -460,9 +486,15 @@ async def upload_invoice(claim_id: int, file: UploadFile = File(...)):
     if not file or not file.filename:
         raise HTTPException(400, "No file uploaded")
     with closing(get_db()) as db:
-        if not db.execute("SELECT 1 FROM claims WHERE id=?", (claim_id,)).fetchone():
+        row = db.execute(
+            "SELECT date_incurred, claimant, institution FROM claims WHERE id=?",
+            (claim_id,),
+        ).fetchone()
+        if not row:
             raise HTTPException(404, "Claim not found")
-        stored = _store_invoice(claim_id, file)
+        stored = _store_invoice(
+            row["date_incurred"], row["claimant"], row["institution"], file
+        )
         db.execute("UPDATE claims SET invoice_file=?, updated_at=? WHERE id=?",
                    (stored, now_iso(), claim_id))
         db.commit()
