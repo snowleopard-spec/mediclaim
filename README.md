@@ -66,14 +66,9 @@ the two JSON files).
 
 ## Customising the claimant list
 
-Edit `claimants.json` directly:
-
-```json
-["Person1", "Person2", "Person3", "Person4"]
-```
-
-Save and reload the page — no restart needed. Existing entries keep whatever
-claimant they were saved with even if you rename someone later.
+Edit `claimants.json` directly — it's a JSON array of names. Save and reload
+the page — no restart needed. Existing entries keep whatever claimant they
+were saved with even if you rename someone later.
 
 ## Adding & managing institutions
 
